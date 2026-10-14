@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>英単語クイズ (日本語入力モード搭載版)</title>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            background-color: #121212;
+            color: #e0e0e0;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+            overflow-x: hidden;
+        }
+        .main-layout {
+            display: flex;
+            justify-content: center;
+            width: 100%;
+            max-width: 500px;
+        }
+        .container {
+            background-color: #1e1e1e;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            width: 100%;
+            text-align: center;
+            border: 1px solid #333;
+            box-sizing: border-box;
+            position: relative;
+            z-index: 1;
+        }
+        
+        /* 📖 単語一覧スライド */
+        .word-list-container {
+            position: fixed;
+            top: 0;
+            right: -360px;
+            width: 340px;
+            height: 100vh;
+            background-color: #1a1a1a;
+            box-shadow: -4px 0 20px rgba(0,0,0,0.7);
+            border-left: 1px solid #333;
+            padding: 20px;
+            box-sizing: border-box;
+            overflow-y: auto;
+            transition: right 0.3s ease;
+            z-index: 10;
+        }
+        .word-list-container.open {
+            right: 0;
+        }
+        .word-list-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #2980b9;
+            padding-bottom: 5px;
+            color: #ffffff;
+        }
+
+        .word-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #2a2a2a;
+            font-size: 14px;
+        }
+        .word-item .en { color: #2ecc71; font-weight: bold; font-family: 'Courier New', Courier, monospace; }
+        .word-item .ja { color: #b0b0b0; margin-right: auto; margin-left: 10px; }
+        .day-header { font-size: 13px; color: #2980b9; font-weight: bold; margin-top: 15px; margin-bottom: 5px; background: #252525; padding: 4px 8px; border-radius: 4px; }
+
+        h1 { font-size: 24px; margin-bottom: 25px; color: #ffffff; letter-spacing: 1px; }
+        
+        .mega-start-btn {
+            background-color: #2ecc71;
+            font-size: 24px;
+            padding: 16px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(46, 204, 113, 0.4);
+            margin-bottom: 25px;
+            letter-spacing: 2px;
+        }
+        .mega-start-btn:hover { background-color: #27ae60; }
+
+        .ideal-row-settings {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            background: #252525;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #333;
+            text-align: left;
+            margin-bottom: 15px;
+        }
+        .ideal-line {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            font-size: 13px;
+            color: #ddd;
+        }
+        .ideal-line label {
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            user-select: none;
+        }
+        .ideal-line input[type="radio"], .ideal-line input[type="checkbox"] {
+            width: 15px;
+            height: 15px;
+            cursor: pointer;
+            margin: 0;
+        }
+
+        button { color: white; border: none; padding: 12px 20px; font-size: 16px; border-radius: 5px; cursor: pointer; width: 100%; transition: background 0.2s; font-weight: bold; }
+        .primary-btn { background-color: #2980b9; }
+        .primary-btn:hover { background-color: #3498db; }
+        .home-btn { background-color: #444; margin-top: 20px; font-size: 14px; padding: 8px 15px; }
+        .home-btn:hover { background-color: #555; }
+        
+        .quiz-section { display: none; }
+        .quiz-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; padding-bottom: 10px; margin-bottom: 15px; }
+        .progress { font-size: 14px; color: #a0a0a0; }
+        .question { font-size: 28px; font-weight: bold; margin: 25px 0; color: #ffffff; }
+        
+        .choices-grid { display: grid; grid-template-columns: 1fr; gap: 10px; margin-bottom: 15px; }
+        .choice-btn {
+            background-color: #2a2a2a; border: 2px solid #444; text-align: left; padding: 14px 20px; font-size: 16px; color: #e0e0e0; border-radius: 8px; transition: all 0.2s;
+        }
+        .choice-btn:hover { background-color: #333; border-color: #555; }
+        .choice-btn.selected-correct { background-color: #1b4d22 !important; border-color: #2ecc71 !important; color: #2ecc71; }
+        .choice-btn.selected-incorrect { background-color: #4d1b1b !important; border-color: #ff6b6b !important; color: #ff6b6b; }
+        
+        input[type="text"] {
+            width: 100%; padding: 12px; font-size: 18px; background-color: #2a2a2a; color: #ffffff; border: 2px solid #444; border-radius: 6px; box-sizing: border-box; text-align: center; margin-bottom: 15px; outline: none;
+        }
+        input[type="text"]:focus { border-color: #2980b9; }
+        .result-message { font-size: 18px; font-weight: bold; margin-top: 10px; min-height: 54px; line-height: 1.5; }
+        .correct { color: #2ecc71; }
+        .incorrect { color: #ff6b6b; }
+        .incorrect strong { color: #ffffff; background-color: #332222; padding: 2px 6px; border-radius: 4px; }
+        .hint { font-size: 14px; color: #888888; margin-top: 15px; }
+        
+        .word-list-container::-webkit-scrollbar { width: 6px; }
+        .word-list-container::-webkit-scrollbar-track { background: #1a1a1a; }
+        .word-list-container::-webkit-scrollbar-thumb { background: #444; border-radius: 3px; }
+        
+        .toggle-switch { position: relative; display: inline-block; width: 44px; height: 22px; }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #444; transition: .3s; border-radius: 22px; }
+        .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px; background-color: white; transition: .3s; border-radius: 50%; }
+        input:checked + .slider { background-color: #2980b9; }
+        input:checked + .slider:before { transform: translateX(22px); }
+    </style>
+</head>
+<body>
+
+<div class="main-layout">
+    <div class="container">
+        <div id="setup-screen">
+            <h1>英単語クイズ</h1>
+            
+            <button class="mega-start-btn" onclick="startQuiz()">スタート (Enter)</button>
+            
+            <div class="ideal-row-settings">
+                <div class="ideal-line">
+                    <label><input type="radio" name="quiz-mode" value="normal" checked> 順番通り</label>
+                    <label><input type="radio" name="quiz-mode" value="random"> ランダム</label>
+                    <label style="color: #e67e22; font-weight: bold;"><input type="radio" name="quiz-mode" value="japanMode"> 日本語入力</label>
+                    <label style="color: #3498db; font-weight: bold;"><input type="radio" name="quiz-mode" value="choice"> 4択</label>
+                </div>
+
+                <div class="ideal-line" style="border-top: 1px solid #333; padding-top: 12px;">
+                    <span>範囲:</span>
+                    <label><input type="checkbox" class="range-chkbx" value="Day5" onchange="updateWordList()"> Day 5</label>
+                    <label><input type="checkbox" class="range-chkbx" value="Day6" onchange="updateWordList()"> Day 6</label>
+                    <label><input type="checkbox" class="range-chkbx" value="Day7" onchange="updateWordList()"> Day 7</label>
+                    <label><input type="checkbox" class="range-chkbx" value="Day8" onchange="updateWordList()"> Day 8</label>
+                    <label><input type="checkbox" class="range-chkbx" value="Day9" checked onchange="updateWordList()"> Day 9</label>
+                    <label><input type="checkbox" class="range-chkbx" value="Day10" checked onchange="updateWordList()"> Day 10</label>
+                </div>
+                
+                <div class="ideal-line" style="border-top: 1px solid #333; padding-top: 12px; font-size: 11px; color: #888;">
+                    <span>右側から単語一覧をスライド表示する</span>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="setup-list-toggle" onchange="syncListToggle(this.checked)">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <div id="quiz-screen" class="quiz-section">
+            <div class="quiz-header">
+                <div class="progress" id="progress-text">0 / 0</div>
+                <div style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: #a0a0a0;">
+                    <span>一覧表示</span>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="quiz-list-toggle" onchange="syncListToggle(this.checked)">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+            
+            <div class="question" id="question-text">意味</div>
+            
+            <input type="text" id="answer-input" autocomplete="off" placeholder="解答を入力してEnter">
+            
+            <div id="choices-container" class="choices-grid" style="display: none;"></div>
+            
+            <div class="result-message" id="result-text"></div>
+            <button id="action-btn" class="primary-btn" onclick="handleNext()">判定 (Enter)</button>
+            <button id="home-action-btn" class="home-btn" onclick="goHome()">🏠 ホーム</button>
+            <div class="hint" id="quiz-hint-text">Enterで進みます</div>
+        </div>
+    </div>
+
+    <div class="word-list-container" id="word-list-box">
+        <div class="word-list-title">📖 対象の単語一覧</div>
+        <div id="word-list-content"></div>
+    </div>
+</div>
+
+<script>
+const wordData = {
+    Day5: [
+        { en: "serve", ja: "～を出す" }, { en: "spread", ja: "～を広げる" },
+        { en: "guess", ja: "～を推測する" }, { en: "prefer", ja: "～が好きだ" },
+        { en: "prove", ja: "～を証明する" }, { en: "separate", ja: "～を分ける" },
+        { en: "taste", ja: "～の味がする" }, { en: "attend", ja: "～に出席する" },
+        { en: "hide", ja: "～を隠す" }, { en: "discuss", ja: "～を話し合う" },
+        { en: "suffer", ja: "苦しむ" }, { en: "struggle", ja: "もがく" },
+        { en: "lend", ja: "～を貸す" }, { en: "warn", ja: "～に警告する" },
+        { en: "ship", ja: "～を輸送する" }, { en: "examine", ja: "～を調査する" }
+    ],
+    Day6: [
+        { en: "bear", ja: "～に耐える" }, { en: "cross", ja: "～を横切る" },
+        { en: "earn", ja: "を稼ぐ" }, { en: "doubt", ja: "～を疑う" },
+        { en: "sort", ja: "～分類する" }, { en: "join", ja: "～に参加する" },
+        { en: "fix", ja: "～を修理する" }, { en: "count", ja: "～を勘定に入れる" },
+        { en: "disappear", ja: "消える" }, { en: "remove", ja: "～を取り去る" },
+        { en: "gather", ja: "集まる" }, { en: "handle", ja: "を扱う" },
+        { en: "behave", ja: "振る舞う" }, { en: "direct", ja: "を向ける" },
+        { en: "destroy", ja: "～を破壊する" }, { en: "excape", ja: "逃げる" }
+    ],
+    Day7: [
+        { en: "smell", ja: "～のにおいがする" }, { en: "freeze", ja: "凍る" },
+        { en: "aim", ja: "～をねらう" }, { en: "belong", ja: "属する" },
+        { en: "intend", ja: "～するつもりである" }, { en: "divide", ja: "～を分ける" },
+        { en: "repair", ja: "～を修理する" }, { en: "relax", ja: "くつろぐ" },
+        { en: "announce", ja: "～を発表する" }, { en: "rush", ja: "急ぎ足で行く" },
+        { en: "deliver", ja: "～を配達する" }, { en: "afford", ja: "～する余裕がある" },
+        { en: "beat", ja: "～を打ち負かす" }, { en: "strike", ja: "～を打つ" },
+        { en: "blame", ja: "～を非難する" }, { en: "steal", ja: "～を盗む" }
+    ],
+    Day8: [
+        { en: "lay", ja: "～を横たえる" }, { en: "hire", ja: "～を雇う" },
+        { en: "hang", ja: "～をかける" }, { en: "recover", ja: "回復する" },
+        { en: "tie", ja: "～を結びつける" }, { en: "borrow", ja: "～を借りる" },
+        { en: "reply", ja: "返事をする" }, { en: "hurt", ja: "～を傷つける" },
+        { en: "reserve", ja: "～を予約する" }
+    ],
+    Day9: [
+        { en: "suit", ja: "～に好都合である" }, { en: "complain", ja: "不満を言う" },
+        { en: "arrange", ja: "を取り決める" }, { en: "hate", ja: "～ひどく嫌う" },
+        { en: "celebrate", ja: "を祝う" }, { en: "permit", ja: "～を許可する" },
+        { en: "rule", ja: "～を支配する" }, { en: "dislike", ja: "～を嫌う" },
+        { en: "admire", ja: "～に感心する" }, { en: "owe", ja: "を借りる" },
+        { en: "scream", ja: "悲鳴を上げる" }, { en: "punish", ja: "～を罰する" },
+        { en: "assist", ja: "～を手伝う" }, { en: "blow", ja: "吹く" },
+        { en: "bend", ja: "～を曲げる" }, { en: "roll", ja: "を転がす" }
+    ],
+    Day10: [
+        { en: "burst", ja: "爆破する" }, { en: "weigh", ja: "～の重さがある" },
+        { en: "float", ja: "浮かぶ" }, { en: "broadcast", ja: "を放送する" },
+        { en: "defend", ja: "～を守る" }, { en: "awake", ja: "目が覚める" },
+        { en: "stretch", ja: "をいっぱいに伸ばす" }, { en: "pour", ja: "～を注ぐ" },
+        { en: "swallow", ja: "を飲み込む" }, { en: "wipe", ja: "を拭く" },
+        { en: "sweep", ja: "～を掃除する" }, { en: "polish", ja: "～を磨く" },
+        { en: "nod", ja: "うなずく" }, { en: "pray", ja: "祈る" },
+        { en: "forgive", ja: "～を許す" }, { en: "drown", ja: "溺れ死ぬ" }
+    ]
+};
+
+const allJaMeanings = Object.values(wordData).flat().map(w => w.ja);
+
+let currentQuizList = [];
+let currentIndex = 0;
+let isAnswered = false;
+let currentScreen = "setup"; 
+let quizFinished = false; 
+let activeMode = "normal"; // "normal", "random", "japanMode", "choice"
+let currentChoices = [];
+
+window.onload = function() {
+    updateWordList();
+};
+
+function syncListToggle(isOpen) {
+    document.getElementById('setup-list-toggle').checked = isOpen;
+    document.getElementById('quiz-list-toggle').checked = isOpen;
+    const wordListBox = document.getElementById('word-list-box');
+    if (isOpen) wordListBox.classList.add('open');
+    else wordListBox.classList.remove('open');
+}
+
+function updateWordList() {
+    const content = document.getElementById('word-list-content');
+    content.innerHTML = "";
+
+    const checkboxes = document.querySelectorAll('.range-chkbx');
+    let hasData = false;
+
+    checkboxes.forEach(cb => {
+        if (cb.checked) {
+            hasData = true;
+            const header = document.createElement('div');
+            header.className = 'day-header';
+            header.innerText = cb.value.replace("Day", "Day ");
+            content.appendChild(header);
+
+            wordData[cb.value].forEach(word => {
+                const item = document.createElement('div');
+                item.className = 'word-item';
+                item.innerHTML = `<span class="en">${word.en}</span><span class="ja">${word.ja}</span>`;
+                content.appendChild(item);
+            });
+        }
+    });
+
+    if (!hasData) {
+        content.innerHTML = '<div style="color: #888; font-size:12px; text-align:center; margin-top:20px;">範囲が未選択です</div>';
+    }
+}
+
+function startQuiz() {
+    currentQuizList = [];
+    
+    activeMode = document.querySelector('input[name="quiz-mode"]:checked').value;
+
+    const checkboxes = document.querySelectorAll('.range-chkbx:checked');
+    checkboxes.forEach(cb => { currentQuizList = currentQuizList.concat(wordData[cb.value]); });
+
+    if (currentQuizList.length === 0) {
+        alert("範囲を1つ以上選択してください！"); return;
+    }
+    
+    if (activeMode !== "normal") {
+        currentQuizList.sort(() => Math.random() - 0.5);
+    }
+
+    launchQuiz();
+}
+
+function launchQuiz() {
+    currentIndex = 0; isAnswered = false; quizFinished = false; currentScreen = "quiz";
+    document.getElementById('setup-screen').style.display = 'none';
+    document.getElementById('quiz-screen').style.display = 'block';
+    document.getElementById('home-action-btn').innerText = "🏠 ホーム";
+    showQuestion();
+}
+
+function showQuestion() {
+    isAnswered = false;
+    const currentWord = currentQuizList[currentIndex];
+    document.getElementById('progress-text').innerText = `${currentIndex + 1} / ${currentQuizList.length}`;
+    
+    const inputField = document.getElementById('answer-input');
+    const choicesContainer = document.getElementById('choices-container');
+    const hintText = document.getElementById('quiz-hint-text');
+    document.getElementById('result-text').innerHTML = "";
+    document.getElementById('action-btn').innerText = activeMode !== 'choice' ? "判定 (Enter)" : "スキップする (Enter)";
+
+    if (activeMode === "normal" || activeMode === "random") {
+        inputField.style.display = 'block';
+        choicesContainer.style.display = 'none';
+        inputField.placeholder = "英単語を入力してEnter";
+        hintText.innerText = "※判定後も打てます。もう一度Enterで次へ";
+        
+        document.getElementById('question-text').innerText = currentWord.ja;
+        inputField.value = "";
+        inputField.focus();
+        
+    } else if (activeMode === "japanMode") {
+        inputField.style.display = 'block';
+        choicesContainer.style.display = 'none';
+        inputField.placeholder = "日本語の意味を入力してEnter";
+        hintText.innerText = "※「～」や「...」などの記号は省略して入力しても正解になります";
+        
+        document.getElementById('question-text').innerText = currentWord.en;
+        inputField.value = "";
+        inputField.focus();
+        
+    } else if (activeMode === "choice") {
+        inputField.style.display = 'none';
+        choicesContainer.style.display = 'grid';
+        hintText.innerText = "※正しい日本語を選んでください (数字キー1〜4でも選べます)";
+        
+        document.getElementById('question-text').innerText = currentWord.en;
+        
+        generateChoices(currentWord.ja);
+    }
+}
+
+function generateChoices(correctJa) {
+    let choices = [correctJa];
+    let filteredJa = allJaMeanings.filter(ja => ja !== correctJa);
+    filteredJa.sort(() => Math.random() - 0.5);
+    for (let i = 0; i < 3; i++) { if (filteredJa[i]) choices.push(filteredJa[i]); }
+    choices.sort(() => Math.random() - 0.5);
+    currentChoices = choices;
+
+    const container = document.getElementById('choices-container');
+    container.innerHTML = "";
+    choices.forEach((choice, index) => {
+        const btn = document.createElement('button');
+        btn.className = 'choice-btn';
+        btn.id = `choice-${index}`;
+        btn.innerText = `${index + 1}.  ${choice}`;
+        btn.onclick = () => selectChoice(index);
+        container.appendChild(btn);
+    });
+}
+
+function selectChoice(index) {
+    if (isAnswered) return;
+    isAnswered = true;
+    const currentWord = currentQuizList[currentIndex];
+    const selectedJa = currentChoices[index];
+    const resultText = document.getElementById('result-text');
+    const actionBtn = document.getElementById('action-btn');
+    const buttons = document.querySelectorAll('.choice-btn');
+    
+    if (selectedJa === currentWord.ja) {
+        document.getElementById(`choice-${index}`).classList.add('selected-correct');
+        resultText.innerHTML = '<span class="correct">⭕ 正解！</span>';
+    } else {
+        document.getElementById(`choice-${index}`).classList.add('selected-incorrect');
+        resultText.innerHTML = `<span class="incorrect">❌ 不正解...</span>`;
+        buttons.forEach((btn, idx) => {
+            if (currentChoices[idx] === currentWord.ja) btn.classList.add('selected-correct');
+        });
+    }
+    actionBtn.innerText = "次へ進む (Enter)";
+}
+
+function cleanJapanese(str) {
+    return str.replace(/[～…\.]/g, "").replace(/\s+/g, "").trim();
+}
+
+function handleNext() {
+    if (quizFinished) { goHome(); return; }
+    const inputField = document.getElementById('answer-input');
+    const resultText = document.getElementById('result-text');
+    const actionBtn = document.getElementById('action-btn');
+    const currentWord = currentQuizList[currentIndex];
+
+    if (activeMode !== "choice") {
+        if (!isAnswered) {
+            let isCorrect = false;
+            const userAnswer = inputField.value.trim();
+
+            if (activeMode === "japanMode") {
+                const cleanUser = cleanJapanese(userAnswer);
+                const cleanCorrect = cleanJapanese(currentWord.ja);
+                isCorrect = (cleanUser === cleanCorrect);
+            } else {
+                isCorrect = (userAnswer.toLowerCase() === currentWord.en.toLowerCase());
+            }
+
+            if (isCorrect) {
+                resultText.innerHTML = '<span class="correct">⭕ 正解！</span>';
+            } else {
+                const answerDisplay = activeMode === "japanMode" ? currentWord.ja : currentWord.en;
+                resultText.innerHTML = `<span class="incorrect">❌ 不正解...</span><br><span style="color: #b0b0b0;">正解:</span> <strong>${answerDisplay}</strong>`;
+            }
+            actionBtn.innerText = "次へ進む (Enter)";
+            isAnswered = true;
+        } else {
+            advanceQuiz();
+        }
+    } else {
+        if (!isAnswered) {
+            isAnswered = true;
+            resultText.innerHTML = `<span class="incorrect">⏭️ スキップ</span>`;
+            const buttons = document.querySelectorAll('.choice-btn');
+            buttons.forEach((btn, idx) => {
+                if (currentChoices[idx] === currentWord.ja) btn.classList.add('selected-correct');
+            });
+            actionBtn.innerText = "次へ進む (Enter)";
+        } else {
+            advanceQuiz();
+        }
+    }
+}
+
+function advanceQuiz() {
+    currentIndex++;
+    if (currentIndex < currentQuizList.length) {
+        showQuestion();
+    } else {
+        quizFinished = true;
+        document.getElementById('answer-input').style.display = 'none';
+        document.getElementById('choices-container').style.display = 'none';
+        document.getElementById('question-text').innerText = "🎉 終了！";
+        document.getElementById('result-text').innerHTML = "お疲れ様でした！<br><span style='font-size:14px; color:#aaa;'>Enterでホームへ戻ります。</span>";
+        document.getElementById('action-btn').innerText = "ホームに戻る (Enter)";
+        document.getElementById('action-btn').focus();
+    }
+}
+
+function goHome() {
+    currentScreen = "setup";
+    updateWordList();
+    document.getElementById('quiz-screen').style.display = 'none';
+    document.getElementById('setup-screen').style.display = 'block';
+}
+
+window.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+        if (currentScreen === "setup") {
+            e.preventDefault(); startQuiz();
+        } else if (currentScreen === "quiz") {
+            e.preventDefault(); handleNext();
+        }
+    }
+    if (currentScreen === "quiz" && activeMode === "choice" && !isAnswered) {
+        if (['1', '2', '3', '4'].includes(e.key)) {
+            e.preventDefault();
+            selectChoice(parseInt(e.key) - 1);
+        }
+    }
+});
+</script>
+
+</body>
+</html>
